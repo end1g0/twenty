@@ -31,7 +31,7 @@ export const seedMessageChannel = async ({
   workspaceId,
   provider = ConnectedAccountProvider.GOOGLE,
   handle = 'tim@apple.dev',
-  connectedAccountId = CONNECTED_ACCOUNT_DATA_SEED_IDS.TIM,
+  connectedAccountId = CONNECTED_ACCOUNT_DATA_SEED_IDS.JANE,
   messageFolderImportPolicy = MessageFolderImportPolicy.ALL_FOLDERS,
   syncStatus = MessageChannelSyncStatus.NOT_SYNCED,
   syncStage = MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,

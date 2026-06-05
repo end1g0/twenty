@@ -24,13 +24,20 @@ export type HttpMock = {
 // Handlers are typed loosely because msw's RequestHandler isn't portably nameable in an
 // exported signature under our tsconfig; callers always pass RequestHandler values.
 export const setupHttpMock = (...baseHandlers: unknown[]): HttpMock => {
-  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-
-  beforeEach(() => {
+  const applyBaseHandlers = () => {
     if (baseHandlers.length > 0) {
       server.use(...(baseHandlers as RequestHandler[]));
     }
+  };
+
+  // Apply the base handlers in beforeAll as well as beforeEach: suites that connect an account
+  // in their own beforeAll need the handlers active before the first test starts.
+  beforeAll(() => {
+    server.listen({ onUnhandledRequest: 'error' });
+    applyBaseHandlers();
   });
+
+  beforeEach(applyBaseHandlers);
 
   afterEach(() => server.resetHandlers());
 

@@ -7,6 +7,16 @@ import { setupHttpMock } from 'test/integration/utils/http-mock';
 
 export const INVALID_REFRESH_TOKEN_PREFIX = 'invalid-refresh-token';
 
+const GOOGLE_OAUTH_SCOPES = [
+  'email',
+  'profile',
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/profile.emails.read',
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/gmail.compose',
+].join(' ');
+
 export const gmailMessage = (
   overrides: Partial<gmail_v1.Schema$Message> = {},
 ): gmail_v1.Schema$Message => {
@@ -125,6 +135,36 @@ const gmailHandlers = ({
       token_type: 'Bearer',
     });
   }),
+  // --- OAuth connect flow (passport code exchange + connect-path availability checks) ---
+  http.post('https://www.googleapis.com/oauth2/v4/token', () =>
+    HttpResponse.json({
+      access_token: 'mock-access-token',
+      refresh_token: 'mock-refresh-token',
+      expires_in: 3600,
+      scope: GOOGLE_OAUTH_SCOPES,
+      token_type: 'Bearer',
+    }),
+  ),
+  http.get('https://www.googleapis.com/oauth2/v3/userinfo', () =>
+    HttpResponse.json({
+      sub: 'google-user-id',
+      email: handle,
+      email_verified: true,
+      name: 'Jane Austen',
+      given_name: 'Jane',
+      family_name: 'Austen',
+    }),
+  ),
+  http.get('https://www.googleapis.com/oauth2/v3/tokeninfo', () =>
+    HttpResponse.json({ scope: GOOGLE_OAUTH_SCOPES, email: handle }),
+  ),
+  http.get('https://gmail.googleapis.com/gmail/v1/users/me/profile', () =>
+    HttpResponse.json({ emailAddress: handle, messagesTotal: 0 }),
+  ),
+  http.get(
+    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+    () => HttpResponse.json({ items: [] }),
+  ),
   http.get('*/gmail/v1/users/me/settings/sendAs', () => {
     const sendAs: gmail_v1.Schema$SendAs[] = [
       { sendAsEmail: handle, isPrimary: true },

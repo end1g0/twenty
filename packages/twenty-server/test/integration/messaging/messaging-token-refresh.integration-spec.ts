@@ -16,9 +16,10 @@ import {
   INVALID_REFRESH_TOKEN_PREFIX,
   setupGmailMock,
 } from 'test/integration/messaging/utils/gmail-mock.util';
-import { getMessageChannel } from 'test/integration/messaging/utils/get-message-channel.util';
+import { queryMessageChannel } from 'test/integration/messaging/utils/query-messaging.util';
 import { seedMessageChannel } from 'test/integration/messaging/utils/seed-message-channel.util';
 import { enqueueJobAndAwait } from 'test/integration/utils/enqueue-job-and-await.util';
+import { pollUntil } from 'test/integration/utils/poll-until.util';
 import { getCoreRepository } from 'test/integration/utils/get-core-repository.util';
 
 const WORKSPACE_ID = SEED_APPLE_WORKSPACE_ID;
@@ -44,6 +45,10 @@ const getConnectedAccount = (connectedAccountId: string) =>
 describe('Messaging token refresh (integration)', () => {
   setupGmailMock({ inbox: [gmailMessage()], handle: 'tim@apple.dev' });
 
+  beforeAll(() => {
+    jest.useRealTimers();
+  });
+
   it('refreshes an expired access token and completes the sync', async () => {
     const channel = await seedMessageChannel({
       workspaceId: WORKSPACE_ID,
@@ -51,13 +56,16 @@ describe('Messaging token refresh (integration)', () => {
     });
 
     try {
-      const result = await runListFetch(channel.channelId);
+      await runListFetch(channel.channelId);
 
-      expect(result).toEqual({ messagesToImport: 1, messagesToDelete: 0 });
-
-      const connectedAccount = await getConnectedAccount(
-        channel.connectedAccountId,
+      const connectedAccount = await pollUntil(
+        () => getConnectedAccount(channel.connectedAccountId),
+        (account) =>
+          (account.lastCredentialsRefreshedAt?.getTime() ?? 0) >
+          EXPIRED_CREDENTIALS_AT.getTime(),
+        { timeoutMs: 30_000 },
       );
+
       expect(connectedAccount.authFailedAt).toBeNull();
       expect(
         connectedAccount.lastCredentialsRefreshedAt?.getTime(),
@@ -77,7 +85,14 @@ describe('Messaging token refresh (integration)', () => {
     try {
       await runListFetch(channel.channelId);
 
-      const channelAfter = await getMessageChannel(channel.channelId);
+      const channelAfter = await pollUntil(
+        () =>
+          queryMessageChannel(channel.connectedAccountId, channel.channelId),
+        (channelState) =>
+          channelState.syncStatus ===
+          MessageChannelSyncStatus.FAILED_INSUFFICIENT_PERMISSIONS,
+        { timeoutMs: 30_000 },
+      );
       expect(channelAfter.syncStage).toBe(MessageChannelSyncStage.FAILED);
       expect(channelAfter.syncStatus).toBe(
         MessageChannelSyncStatus.FAILED_INSUFFICIENT_PERMISSIONS,

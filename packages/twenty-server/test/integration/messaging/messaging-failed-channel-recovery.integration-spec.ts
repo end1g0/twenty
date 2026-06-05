@@ -6,9 +6,10 @@ import {
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { SEED_APPLE_WORKSPACE_ID } from 'src/engine/workspace-manager/dev-seeder/core/constants/seeder-workspaces.constant';
 import { MessagingRelaunchFailedMessageChannelJob } from 'src/modules/messaging/message-import-manager/jobs/messaging-relaunch-failed-message-channel.job';
-import { getMessageChannel } from 'test/integration/messaging/utils/get-message-channel.util';
+import { queryMessageChannel } from 'test/integration/messaging/utils/query-messaging.util';
 import { seedMessageChannel } from 'test/integration/messaging/utils/seed-message-channel.util';
 import { enqueueJobAndAwait } from 'test/integration/utils/enqueue-job-and-await.util';
+import { pollUntil } from 'test/integration/utils/poll-until.util';
 
 const WORKSPACE_ID = SEED_APPLE_WORKSPACE_ID;
 
@@ -20,6 +21,10 @@ const relaunchFailedChannel = (channelId: string) =>
   );
 
 describe('Messaging failed-channel recovery (integration)', () => {
+  beforeAll(() => {
+    jest.useRealTimers();
+  });
+
   it('recovers a FAILED_UNKNOWN channel and clears its throttle state', async () => {
     const channel = await seedMessageChannel({
       workspaceId: WORKSPACE_ID,
@@ -33,7 +38,13 @@ describe('Messaging failed-channel recovery (integration)', () => {
     try {
       await relaunchFailedChannel(channel.channelId);
 
-      const recovered = await getMessageChannel(channel.channelId);
+      const recovered = await pollUntil(
+        () =>
+          queryMessageChannel(channel.connectedAccountId, channel.channelId),
+        (channelState) =>
+          channelState?.syncStatus === MessageChannelSyncStatus.ACTIVE,
+        { timeoutMs: 30_000 },
+      );
 
       expect(recovered.syncStage).toBe(
         MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
@@ -57,7 +68,13 @@ describe('Messaging failed-channel recovery (integration)', () => {
     try {
       await relaunchFailedChannel(channel.channelId);
 
-      const channelAfter = await getMessageChannel(channel.channelId);
+      // No-op recovery: grace window for the worker to process, then assert no change.
+      const channelAfter = await pollUntil(
+        () =>
+          queryMessageChannel(channel.connectedAccountId, channel.channelId),
+        () => false,
+        { timeoutMs: 3_000 },
+      );
 
       expect(channelAfter.syncStage).toBe(MessageChannelSyncStage.FAILED);
       expect(channelAfter.syncStatus).toBe(

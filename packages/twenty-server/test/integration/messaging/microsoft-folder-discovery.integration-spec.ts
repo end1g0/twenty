@@ -1,7 +1,6 @@
 import { ConnectedAccountProvider } from 'twenty-shared/types';
 
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
-import { MessageFolderEntity } from 'src/engine/metadata-modules/message-folder/entities/message-folder.entity';
 import { SEED_APPLE_WORKSPACE_ID } from 'src/engine/workspace-manager/dev-seeder/core/constants/seeder-workspaces.constant';
 import {
   type MessagingMessageListFetchJobData,
@@ -9,9 +8,10 @@ import {
   type MessagingMessageListFetchJobResult,
 } from 'src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job';
 import { setupMicrosoftMock } from 'test/integration/messaging/utils/microsoft-mock.util';
+import { queryMessageFolders } from 'test/integration/messaging/utils/query-messaging.util';
 import { seedMessageChannel } from 'test/integration/messaging/utils/seed-message-channel.util';
 import { enqueueJobAndAwait } from 'test/integration/utils/enqueue-job-and-await.util';
-import { getCoreRepository } from 'test/integration/utils/get-core-repository.util';
+import { pollUntil } from 'test/integration/utils/poll-until.util';
 
 const WORKSPACE_ID = SEED_APPLE_WORKSPACE_ID;
 
@@ -20,7 +20,17 @@ describe('Microsoft folder discovery (integration)', () => {
 
   let channel: Awaited<ReturnType<typeof seedMessageChannel>>;
 
+  const getFolderNames = async (channelId: string): Promise<string[]> => {
+    const folders = await queryMessageFolders(channelId);
+
+    return folders
+      .map((folder) => folder.name)
+      .filter((name): name is string => name !== null)
+      .sort();
+  };
+
   beforeAll(async () => {
+    jest.useRealTimers();
     channel = await seedMessageChannel({
       workspaceId: WORKSPACE_ID,
       provider: ConnectedAccountProvider.MICROSOFT,
@@ -40,13 +50,12 @@ describe('Microsoft folder discovery (integration)', () => {
       workspaceId: WORKSPACE_ID,
     });
 
-    const folders = await getCoreRepository(MessageFolderEntity).find({
-      where: { messageChannelId: channel.channelId },
-    });
+    const folderNames = await pollUntil(
+      () => getFolderNames(channel.channelId),
+      (names) => names.length === 2,
+      { timeoutMs: 30_000 },
+    );
 
-    expect(folders.map((folder) => folder.name).sort()).toEqual([
-      'Inbox',
-      'Sent Items',
-    ]);
+    expect(folderNames).toEqual(['Inbox', 'Sent Items']);
   }, 60000);
 });

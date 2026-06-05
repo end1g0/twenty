@@ -12,6 +12,7 @@ import {
 import { getMessageChannel } from 'test/integration/messaging/utils/get-message-channel.util';
 import { seedMessageChannel } from 'test/integration/messaging/utils/seed-message-channel.util';
 import { enqueueJobAndAwait } from 'test/integration/utils/enqueue-job-and-await.util';
+import { pollUntil } from 'test/integration/utils/poll-until.util';
 
 const WORKSPACE_ID = SEED_APPLE_WORKSPACE_ID;
 const HISTORY_ID = '987654321';
@@ -36,6 +37,20 @@ describe('Messaging sync cursor (integration)', () => {
     handle: 'tim@apple.dev',
   });
 
+  beforeAll(() => {
+    jest.useRealTimers();
+  });
+
+  const runAndAwaitCursor = async (channelId: string) => {
+    await runListFetch(channelId);
+
+    return pollUntil(
+      () => getMessageChannel(channelId),
+      (channel) => channel.syncCursor === HISTORY_ID,
+      { timeoutMs: 30_000 },
+    );
+  };
+
   it('runs a full sync and seeds the cursor when the cursor is null', async () => {
     const channel = await seedMessageChannel({
       workspaceId: WORKSPACE_ID,
@@ -43,11 +58,7 @@ describe('Messaging sync cursor (integration)', () => {
     });
 
     try {
-      const result = await runListFetch(channel.channelId);
-
-      expect(result.messagesToImport).toBe(2);
-
-      const channelAfter = await getMessageChannel(channel.channelId);
+      const channelAfter = await runAndAwaitCursor(channel.channelId);
       expect(channelAfter.syncCursor).toBe(HISTORY_ID);
     } finally {
       await channel.cleanup();
@@ -61,11 +72,7 @@ describe('Messaging sync cursor (integration)', () => {
     });
 
     try {
-      const result = await runListFetch(channel.channelId);
-
-      expect(result.messagesToImport).toBe(2);
-
-      const channelAfter = await getMessageChannel(channel.channelId);
+      const channelAfter = await runAndAwaitCursor(channel.channelId);
       expect(channelAfter.syncCursor).toBe(HISTORY_ID);
     } finally {
       await channel.cleanup();

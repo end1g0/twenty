@@ -1,11 +1,7 @@
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
-import { MessageFolderEntity } from 'src/engine/metadata-modules/message-folder/entities/message-folder.entity';
-import { SEED_APPLE_WORKSPACE_ID } from 'src/engine/workspace-manager/dev-seeder/core/constants/seeder-workspaces.constant';
-import {
-  type MessagingMessageListFetchJobData,
-  MessagingMessageListFetchJob,
-  type MessagingMessageListFetchJobResult,
-} from 'src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job';
+import { ConnectedAccountProvider } from 'twenty-shared/types';
+
+import { MessagingMessageListFetchCronJob } from 'src/modules/messaging/message-import-manager/crons/jobs/messaging-message-list-fetch.cron.job';
 import { findManyOperationFactory } from 'test/integration/graphql/utils/find-many-operation-factory.util';
 import { makeGraphqlAPIRequest } from 'test/integration/graphql/utils/make-graphql-api-request.util';
 import {
@@ -13,67 +9,67 @@ import {
   gmailMessage,
   setupGmailMock,
 } from 'test/integration/messaging/utils/gmail-mock.util';
-import { seedMessageChannel } from 'test/integration/messaging/utils/seed-message-channel.util';
+import { connectMessagingAccount } from 'test/integration/messaging/utils/connect-messaging-account.util';
 import { enqueueJobAndAwait } from 'test/integration/utils/enqueue-job-and-await.util';
-import { getCoreRepository } from 'test/integration/utils/get-core-repository.util';
+import { queryMessageFolders } from 'test/integration/messaging/utils/query-messaging.util';
+import { pollUntil } from 'test/integration/utils/poll-until.util';
 
-const WORKSPACE_ID = SEED_APPLE_WORKSPACE_ID;
+const findImportedSubjects = async (subjects: string[]): Promise<string[]> => {
+  const response = await makeGraphqlAPIRequest(
+    findManyOperationFactory({
+      objectMetadataSingularName: 'message',
+      objectMetadataPluralName: 'messages',
+      gqlFields: `id
+        subject`,
+      filter: { subject: { in: subjects } },
+    }),
+  );
+
+  return response.body.data.messages.edges
+    .map((edge: { node: { subject: string } }) => edge.node.subject)
+    .sort();
+};
 
 describe('Gmail message list fetch job (integration)', () => {
   const inbox = [gmailMessage(), gmailMessage()];
 
-  setupGmailMock({ inbox, handle: 'tim@apple.dev' });
+  setupGmailMock({ inbox, handle: 'connected-account@apple.dev' });
 
-  let channel: Awaited<ReturnType<typeof seedMessageChannel>>;
+  let channel: Awaited<ReturnType<typeof connectMessagingAccount>>;
 
   beforeAll(async () => {
-    channel = await seedMessageChannel({ workspaceId: WORKSPACE_ID });
+    // The real BullMQ worker runs asynchronously, so polling uses real timers.
+    jest.useRealTimers();
+    channel = await connectMessagingAccount(ConnectedAccountProvider.GOOGLE);
   }, 60000);
 
   afterAll(async () => {
     await channel.cleanup();
   });
 
-  it('runs the full sync pipeline: folders synced, list fetched, messages imported', async () => {
-    const result = await enqueueJobAndAwait<
-      MessagingMessageListFetchJobData,
-      MessagingMessageListFetchJobResult
-    >(MessageQueue.messagingQueue, MessagingMessageListFetchJob, {
-      messageChannelId: channel.channelId,
-      workspaceId: WORKSPACE_ID,
-    });
-
-    const folders = await getCoreRepository<MessageFolderEntity>(
-      MessageFolderEntity,
-    ).find({
-      where: { messageChannelId: channel.channelId },
-    });
-
-    const folderNames = folders.map((folder) => folder.name).sort();
-
-    expect(folderNames).toEqual(['INBOX', 'SENT']);
-
-    expect(result).toEqual({
-      messagesToImport: inbox.length,
-      messagesToDelete: 0,
-    });
+  it('runs the full sync pipeline on the real worker: folders synced, messages imported', async () => {
+    // The cron schedules pending channels and enqueues their list-fetch onto the worker.
+    await enqueueJobAndAwait(
+      MessageQueue.cronQueue,
+      MessagingMessageListFetchCronJob,
+      {},
+    );
 
     const expectedSubjects = inbox.map(getGmailMessageSubject);
 
-    const messagesResponse = await makeGraphqlAPIRequest(
-      findManyOperationFactory({
-        objectMetadataSingularName: 'message',
-        objectMetadataPluralName: 'messages',
-        gqlFields: `id
-          subject`,
-        filter: { subject: { in: expectedSubjects } },
-      }),
+    const importedSubjects = await pollUntil(
+      () => findImportedSubjects(expectedSubjects),
+      (subjects) => subjects.length === expectedSubjects.length,
+      { timeoutMs: 30_000 },
     );
 
-    const importedSubjects = messagesResponse.body.data.messages.edges
-      .map((edge: { node: { subject: string } }) => edge.node.subject)
-      .sort();
-
     expect(importedSubjects).toEqual([...expectedSubjects].sort());
+
+    const folders = await queryMessageFolders(channel.channelId);
+
+    expect(folders.map((folder) => folder.name).sort()).toEqual([
+      'INBOX',
+      'SENT',
+    ]);
   }, 60000);
 });
