@@ -142,6 +142,14 @@ export class TimelineActivityService {
       ];
     }
 
+    if (objectSingularName === 'attachment') {
+      return this.computeTimelineActivityPayloadsForAttachments(
+        events,
+        name,
+        objectMetadata,
+      );
+    }
+
     if (
       objectSingularName === 'noteTarget' ||
       objectSingularName === 'taskTarget'
@@ -380,5 +388,55 @@ export class TimelineActivityService {
     ];
 
     return activityId;
+  }
+
+  private computeTimelineActivityPayloadsForAttachments(
+    events: ObjectRecordBaseEvent[],
+    name: string,
+    objectMetadata: any,
+  ): TimelineActivityPayload[] {
+    const { action } = parseEventNameOrThrow(name);
+
+    return events
+      .flatMap((event) => {
+        const after = event.properties.after || event.properties;
+        if (!after) {
+          return [];
+        }
+
+        const targetKeys = Object.keys(after).filter(
+          (key) =>
+            key.startsWith('target') &&
+            key.endsWith('Id') &&
+            after[key] !== null,
+        );
+
+        if (targetKeys.length === 0) {
+          return [];
+        }
+
+        return targetKeys.map((targetKey) => {
+          const recordId = after[targetKey];
+          const targetObjectName =
+            extractObjectSingularNameFromTargetColumnName(targetKey);
+
+          let cachedName = after.name || '';
+          if (Array.isArray(after.file) && after.file.length > 0) {
+            cachedName = after.file[0]?.label || cachedName;
+          }
+
+          return {
+            name: `linked-attachment.${action}`,
+            objectSingularName: targetObjectName,
+            recordId,
+            linkedRecordCachedName: cachedName,
+            linkedRecordId: event.recordId,
+            linkedObjectMetadataId: objectMetadata.id,
+            workspaceMemberId: event.workspaceMemberId,
+            properties: event.properties,
+          } satisfies TimelineActivityPayload;
+        });
+      })
+      .filter(isDefined);
   }
 }

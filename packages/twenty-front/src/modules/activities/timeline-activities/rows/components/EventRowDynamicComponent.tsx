@@ -46,7 +46,7 @@ export const EventRowDynamicComponent = ({
           createdAt={createdAt}
         />
       );
-    case 'note':
+        case 'note':
       return (
         <EventRowActivity
           labelIdentifierValue={labelIdentifierValue}
@@ -55,6 +55,18 @@ export const EventRowDynamicComponent = ({
           linkedObjectMetadataItem={linkedObjectMetadataItem}
           authorFullName={authorFullName}
           objectNameSingular={CoreObjectNameSingular.Note}
+          createdAt={createdAt}
+        />
+      );
+    case 'attachment':
+      return (
+        <EventRowActivity
+          labelIdentifierValue={labelIdentifierValue}
+          event={event}
+          mainObjectMetadataItem={mainObjectMetadataItem}
+          linkedObjectMetadataItem={linkedObjectMetadataItem}
+          authorFullName={authorFullName}
+          objectNameSingular={CoreObjectNameSingular.Attachment}
           createdAt={createdAt}
         />
       );

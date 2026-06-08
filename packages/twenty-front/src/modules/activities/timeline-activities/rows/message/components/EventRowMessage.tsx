@@ -1,14 +1,12 @@
 import { styled } from '@linaria/react';
-import { t } from '@lingui/core/macro';
-import { useState } from 'react';
+import { useLingui } from '@lingui/react/macro';
 
 import { EventCard } from '@/activities/timeline-activities/rows/components/EventCard';
-import { EventCardToggleButton } from '@/activities/timeline-activities/rows/components/EventCardToggleButton';
 import { type EventRowDynamicComponentProps } from '@/activities/timeline-activities/rows/components/EventRowDynamicComponent.types';
 import { EventRowItem } from '@/activities/timeline-activities/rows/components/EventRowItem';
 import { EventCardMessage } from '@/activities/timeline-activities/rows/message/components/EventCardMessage';
 import { isTimelineActivityWithLinkedRecord } from '@/activities/timeline-activities/types/TimelineActivity';
-import { themeCssVariables } from 'twenty-ui-deprecated/theme-constants';
+import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 type EventRowMessageProps = EventRowDynamicComponentProps;
 
@@ -29,8 +27,8 @@ export const EventRowMessage = ({
   authorFullName,
   labelIdentifierValue,
 }: EventRowMessageProps) => {
+  const { t } = useLingui();
   const [, eventAction] = event.name.split('.');
-  const [isOpen, setIsOpen] = useState(false);
 
   if (['linked'].includes(eventAction) === false) {
     throw new Error('Invalid event action for message event type.');
@@ -42,16 +40,15 @@ export const EventRowMessage = ({
         <EventRowItem>{authorFullName}</EventRowItem>
         <EventRowItem variant="action">{t`linked an email with`}</EventRowItem>
         <EventRowItem>{labelIdentifierValue}</EventRowItem>
-        <EventCardToggleButton isOpen={isOpen} setIsOpen={setIsOpen} />
       </StyledRowContainer>
-      <EventCard isOpen={isOpen}>
-        {isTimelineActivityWithLinkedRecord(event) && (
+      {isTimelineActivityWithLinkedRecord(event) && (
+        <EventCard isOpen={true}>
           <EventCardMessage
             messageId={event.linkedRecordId}
             authorFullName={authorFullName}
           />
-        )}
-      </EventCard>
+        </EventCard>
+      )}
     </StyledEventRowMessageContainer>
   );
 };

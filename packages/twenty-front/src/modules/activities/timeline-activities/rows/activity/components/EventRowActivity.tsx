@@ -5,14 +5,15 @@ import { type EventRowDynamicComponentProps } from '@/activities/timeline-activi
 import { EventRowItem } from '@/activities/timeline-activities/rows/components/EventRowItem';
 import { isTimelineActivityWithLinkedRecord } from '@/activities/timeline-activities/types/TimelineActivity';
 import { useOpenRecordInSidePanel } from '@/side-panel/hooks/useOpenRecordInSidePanel';
-import { type CoreObjectNameSingular } from 'twenty-shared/types';
+import { CoreObjectNameSingular } from 'twenty-shared/types';
 import { useGetRecordFromCache } from '@/object-record/cache/hooks/useGetRecordFromCache';
 import { isNonEmptyString } from '@sniptt/guards';
-import { OverflowingTextWithTooltip } from 'twenty-ui-deprecated/display';
-import {
-  MOBILE_VIEWPORT,
-  themeCssVariables,
-} from 'twenty-ui-deprecated/theme-constants';
+import { OverflowingTextWithTooltip } from 'twenty-ui/display';
+import { MOBILE_VIEWPORT, themeCssVariables } from 'twenty-ui/theme-constants';
+import { EventCard } from '@/activities/timeline-activities/rows/components/EventCard';
+import { EventCardTask } from './EventCardTask';
+import { EventCardNote } from './EventCardNote';
+import { EventCardAttachment } from './EventCardAttachment';
 
 type EventRowActivityProps = EventRowDynamicComponentProps;
 
@@ -47,6 +48,12 @@ const StyledRow = styled.div`
   overflow: hidden;
 `;
 
+const StyledRightContainer = styled.div`
+  align-items: center;
+  display: flex;
+  gap: ${themeCssVariables.spacing[2]};
+`;
+
 const StyledItemTitleDate = styled.div`
   @media (max-width: ${MOBILE_VIEWPORT}px) {
     display: none;
@@ -69,10 +76,6 @@ export const EventRowActivity = ({
 
   const eventObject = eventLinkedObject.replace('linked-', '');
 
-  if (!isTimelineActivityWithLinkedRecord(event)) {
-    throw new Error('Could not find linked record id for event');
-  }
-
   const getActivityFromCache = useGetRecordFromCache({
     objectNameSingular,
     recordGqlFields: {
@@ -81,7 +84,13 @@ export const EventRowActivity = ({
     },
   });
 
-  const activityInStore = getActivityFromCache(event.linkedRecordId);
+  const { openRecordInSidePanel } = useOpenRecordInSidePanel();
+
+  const hasLinkedRecord = isTimelineActivityWithLinkedRecord(event);
+
+  const activityInStore = hasLinkedRecord
+    ? getActivityFromCache(event.linkedRecordId)
+    : null;
 
   const computeActivityTitle = () => {
     if (isNonEmptyString(activityInStore?.title)) {
@@ -96,8 +105,6 @@ export const EventRowActivity = ({
   };
   const activityTitle = computeActivityTitle();
 
-  const { openRecordInSidePanel } = useOpenRecordInSidePanel();
-
   return (
     <StyledEventRow>
       <StyledRowContainer>
@@ -106,19 +113,41 @@ export const EventRowActivity = ({
           <EventRowItem variant="action">
             {t`${eventAction} a related ${eventObject}`}
           </EventRowItem>
-          <StyledLinkedActivity
-            onClick={() =>
-              openRecordInSidePanel({
-                recordId: event.linkedRecordId,
-                objectNameSingular,
-              })
-            }
-          >
-            <OverflowingTextWithTooltip text={activityTitle} />
-          </StyledLinkedActivity>
+          {hasLinkedRecord && (
+            <StyledLinkedActivity
+              onClick={() =>
+                openRecordInSidePanel({
+                  recordId: event.linkedRecordId,
+                  objectNameSingular,
+                })
+              }
+            >
+              <OverflowingTextWithTooltip text={activityTitle} />
+            </StyledLinkedActivity>
+          )}
+          {!hasLinkedRecord && (
+            <StyledLinkedActivity as="span" style={{ cursor: 'default', textDecoration: 'none' }}>
+              <OverflowingTextWithTooltip text={activityTitle} />
+            </StyledLinkedActivity>
+          )}
         </StyledRow>
-        <StyledItemTitleDate>{createdAt}</StyledItemTitleDate>
+        <StyledRightContainer>
+          <StyledItemTitleDate>{createdAt}</StyledItemTitleDate>
+        </StyledRightContainer>
       </StyledRowContainer>
+      {hasLinkedRecord && (
+        <EventCard isOpen={true}>
+          {objectNameSingular === CoreObjectNameSingular.Task && (
+            <EventCardTask taskId={event.linkedRecordId} />
+          )}
+          {objectNameSingular === CoreObjectNameSingular.Note && (
+            <EventCardNote noteId={event.linkedRecordId} />
+          )}
+          {objectNameSingular === CoreObjectNameSingular.Attachment && (
+            <EventCardAttachment attachmentId={event.linkedRecordId} />
+          )}
+        </EventCard>
+      )}
     </StyledEventRow>
   );
 };

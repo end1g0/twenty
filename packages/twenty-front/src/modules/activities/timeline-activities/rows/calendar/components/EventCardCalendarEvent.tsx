@@ -13,7 +13,7 @@ import { useContext } from 'react';
 import { FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED } from 'twenty-shared/constants';
 import { CombinedGraphQLErrors } from '@apollo/client/errors';
 import { isDefined } from 'twenty-shared/utils';
-import { themeCssVariables } from 'twenty-ui-deprecated/theme-constants';
+import { themeCssVariables } from 'twenty-ui/theme-constants';
 import {
   formatToHumanReadableDay,
   formatToHumanReadableMonth,
@@ -151,7 +151,7 @@ export const EventCardCalendarEvent = ({
   const endsAtDate = calendarEvent?.endsAt;
 
   if (isUndefinedOrNull(startsAtDate)) {
-    throw new Error("Can't render a calendarEvent without a start date");
+    return <div>{t`Calendar event date unavailable`}</div>;
   }
 
   const startsAtMonth = formatToHumanReadableMonth(startsAtDate, timeZone);

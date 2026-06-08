@@ -1,3 +1,4 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import { rawDataSource } from 'src/database/typeorm/raw/raw.datasource';
 
 import { camelToSnakeCase, performQuery } from './setup-db-utils';

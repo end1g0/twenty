@@ -57,9 +57,7 @@ export const generateDepthRecordGqlFieldsFromFields = ({
         );
 
         if (!targetObjectMetadataItem) {
-          throw new Error(
-            `Target object metadata item not found for ${fieldMetadata.name}`,
-          );
+          return recordGqlFields;
         }
 
         const isActivityTargetField =
@@ -127,17 +125,15 @@ export const generateDepthRecordGqlFieldsFromFields = ({
           );
         }
 
-        const morphGqlFields = fieldMetadata.morphRelations.map(
-          (morphRelation) => {
+        const morphGqlFields = fieldMetadata.morphRelations
+          .map((morphRelation) => {
             const morphTargetObjectMetadataItem = objectMetadataItems.find(
               (objectMetadataItem) =>
                 objectMetadataItem.id === morphRelation.targetObjectMetadata.id,
             );
 
             if (!morphTargetObjectMetadataItem) {
-              throw new Error(
-                `Target object metadata item not found for ${fieldMetadata.name} (morph target ${morphRelation.targetObjectMetadata.nameSingular})`,
-              );
+              return null;
             }
 
             return {
@@ -154,8 +150,8 @@ export const generateDepthRecordGqlFieldsFromFields = ({
                 morphTargetObjectMetadataItem,
               ),
             };
-          },
-        );
+          })
+          .filter(isDefined);
 
         return {
           ...recordGqlFields,
