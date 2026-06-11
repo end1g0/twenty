@@ -81,7 +81,11 @@ export const useRelevantRecordsGqlFields = ({
   return {
     id: true,
     ...(isDefined(additionalFieldMetadataItem)
-      ? { [additionalFieldMetadataItem.name]: true }
+      ? generateDepthRecordGqlFieldsFromFields({
+          objectMetadataItems,
+          fields: [additionalFieldMetadataItem],
+          depth: 1,
+        })
       : {}),
     ...(isDefined(labelIdentifierFieldMetadataItem)
       ? { [labelIdentifierFieldMetadataItem.name]: true }

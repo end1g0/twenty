@@ -14,6 +14,7 @@ import { currentRecordSortsComponentState } from '@/object-record/record-sort/st
 import { useAtomComponentSelectorValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentSelectorValue';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
+import { FieldMetadataType } from 'twenty-shared/types';
 import {
   combineFilters,
   computeRecordGqlOperationFilter,
@@ -86,10 +87,21 @@ export const useRecordIndexGroupCommonQueryVariables = () => {
     (recordGroupDefinition) => recordGroupDefinition.value,
   );
 
-  const recordGroupOptionsFilter = computeRecordGroupOptionsFilter({
-    recordGroupFieldMetadata: recordIndexGroupFieldMetadataItem,
-    recordGroupValues,
-  });
+  const isStaticField = recordIndexGroupFieldMetadataItem
+? [
+        FieldMetadataType.SELECT,
+        FieldMetadataType.MULTI_SELECT,
+        FieldMetadataType.BOOLEAN,
+        FieldMetadataType.RATING,
+      ].includes(recordIndexGroupFieldMetadataItem.type as FieldMetadataType)
+    : false;
+
+  const recordGroupOptionsFilter = isStaticField
+    ? computeRecordGroupOptionsFilter({
+        recordGroupFieldMetadata: recordIndexGroupFieldMetadataItem,
+        recordGroupValues,
+      })
+    : {};
 
   const combinedFilters = combineFilters([
     anyFieldFilter,
@@ -97,7 +109,9 @@ export const useRecordIndexGroupCommonQueryVariables = () => {
     recordGroupOptionsFilter,
   ]);
 
-  const recordGroupsLimit = visibleRecordGroupDefinitions.length;
+  const recordGroupsLimit = isStaticField
+    ? visibleRecordGroupDefinitions.length
+    : 50;
 
   return {
     combinedFilters,

@@ -11,6 +11,22 @@ import { getEmptyFlatEntityValidationError } from 'src/engine/workspace-manager/
 import { type FlatEntityUpdateValidationArgs } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-builder/types/universal-flat-entity-update-validation-args.type';
 import { type UniversalFlatEntityValidationArgs } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-builder/types/universal-flat-entity-validation-args.type';
 
+const KANBAN_GROUPABLE_FIELD_TYPES: FieldMetadataType[] = [
+  FieldMetadataType.SELECT,
+  FieldMetadataType.MULTI_SELECT,
+  FieldMetadataType.BOOLEAN,
+  FieldMetadataType.RATING,
+  FieldMetadataType.TEXT,
+  FieldMetadataType.NUMBER,
+  FieldMetadataType.RELATION,
+  FieldMetadataType.DATE,
+  FieldMetadataType.DATE_TIME,
+  FieldMetadataType.CURRENCY,
+  FieldMetadataType.EMAILS,
+  FieldMetadataType.PHONES,
+  FieldMetadataType.LINKS,
+];
+
 export class FlatViewValidatorService {
   constructor() {}
 
@@ -104,11 +120,13 @@ export class FlatViewValidatorService {
           message: t`Kanban main group by field metadata not found`,
           userFriendlyMessage: msg`Kanban main group by field metadata not found`,
         });
-      } else if (mainGroupByFieldMetadata.type !== FieldMetadataType.SELECT) {
+      } else if (
+        !KANBAN_GROUPABLE_FIELD_TYPES.includes(mainGroupByFieldMetadata.type)
+      ) {
         validationResult.errors.push({
           code: ViewExceptionCode.INVALID_VIEW_DATA,
-          message: t`Kanban main group by field must be a SELECT field`,
-          userFriendlyMessage: msg`Kanban main group by field must be a select field`,
+          message: t`Kanban main group by field must be a groupable field`,
+          userFriendlyMessage: msg`Kanban main group by field must be a groupable field`,
         });
       }
     }
@@ -133,11 +151,13 @@ export class FlatViewValidatorService {
           message: t`Kanban main group by field metadata not found`,
           userFriendlyMessage: msg`Kanban main group by field metadata not found`,
         });
-      } else if (mainGroupByFieldMetadata.type !== FieldMetadataType.SELECT) {
+      } else if (
+        !KANBAN_GROUPABLE_FIELD_TYPES.includes(mainGroupByFieldMetadata.type)
+      ) {
         validationResult.errors.push({
           code: ViewExceptionCode.INVALID_VIEW_DATA,
-          message: t`Kanban main group by field must be a SELECT field`,
-          userFriendlyMessage: msg`Kanban main group by field must be a select field`,
+          message: t`Kanban main group by field must be a groupable field`,
+          userFriendlyMessage: msg`Kanban main group by field must be a groupable field`,
         });
       }
     }
@@ -300,11 +320,13 @@ export class FlatViewValidatorService {
           message: t`Kanban main group by field metadata not found`,
           userFriendlyMessage: msg`Kanban main group by field metadata not found`,
         });
-      } else if (mainGroupByFieldMetadata.type !== FieldMetadataType.SELECT) {
+      } else if (
+        !KANBAN_GROUPABLE_FIELD_TYPES.includes(mainGroupByFieldMetadata.type)
+      ) {
         validationResult.errors.push({
           code: ViewExceptionCode.INVALID_VIEW_DATA,
-          message: t`Kanban main group by field must be a SELECT field`,
-          userFriendlyMessage: msg`Kanban main group by field must be a select field`,
+          message: t`Kanban main group by field must be a groupable field`,
+          userFriendlyMessage: msg`Kanban main group by field must be a groupable field`,
         });
       }
     }

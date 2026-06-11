@@ -22,6 +22,7 @@ import { useAtomComponentStateCallbackState } from '@/ui/utilities/state/jotai/h
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { isNonEmptyArray } from '@sniptt/guards';
 import { isDefined } from 'twenty-shared/utils';
+import { FieldMetadataType } from 'twenty-shared/types';
 import { computeRecordGroupOptionsFilter } from '@/object-record/record-group/utils/computeRecordGroupOptionsFilter';
 import { sortByProperty } from '~/utils/array/sortByProperty';
 import { sleep } from '~/utils/sleep';
@@ -37,6 +38,10 @@ export const useTriggerRecordBoardFetchMore = () => {
   const recordIndexGroupFieldMetadataItem = useAtomComponentStateValue(
     recordIndexGroupFieldMetadataItemComponentState,
   );
+
+  const isDateField = recordIndexGroupFieldMetadataItem &&
+    (recordIndexGroupFieldMetadataItem.type === FieldMetadataType.DATE ||
+      recordIndexGroupFieldMetadataItem.type === FieldMetadataType.DATE_TIME);
 
   const recordBoardShouldFetchMoreInColumnFamilyCallbackState =
     useAtomComponentFamilyStateCallbackState(
@@ -143,11 +148,16 @@ export const useTriggerRecordBoardFetchMore = () => {
     );
 
     for (const recordGroupDefinition of sortedRecordGroupDefinitions) {
-      const foundGroupInResult = groups.find(
-        (recordGroup: any) =>
-          (recordGroup.groupByDimensionValues[0] as string) ===
-          recordGroupDefinition.value,
-      );
+      const foundGroupInResult = groups.find((recordGroup: any) => {
+        let value = recordGroup.groupByDimensionValues[0];
+        if (isDefined(value)) {
+          value = String(value);
+        }
+        if (isDateField && typeof value === 'string' && value.length >= 10) {
+          value = value.substring(0, 10);
+        }
+        return value === recordGroupDefinition.value;
+      });
 
       if (!isDefined(foundGroupInResult)) {
         store.set(

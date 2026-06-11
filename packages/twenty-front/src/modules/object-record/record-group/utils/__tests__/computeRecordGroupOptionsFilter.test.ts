@@ -1,9 +1,17 @@
+import { FieldMetadataType } from 'twenty-shared/types';
 import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { computeRecordGroupOptionsFilter } from '@/object-record/record-group/utils/computeRecordGroupOptionsFilter';
 
 const mockFieldMetadata = {
   id: 'field-1',
   name: 'status',
+  type: FieldMetadataType.SELECT,
+} as FieldMetadataItem;
+
+const mockRelationFieldMetadata = {
+  id: 'field-2',
+  name: 'company',
+  type: FieldMetadataType.RELATION,
 } as FieldMetadataItem;
 
 describe('computeRecordGroupOptionsFilter', () => {
@@ -48,6 +56,20 @@ describe('computeRecordGroupOptionsFilter', () => {
       or: [
         { status: { is: 'NULL' } },
         { status: { in: ['value1', 'value2'] } },
+      ],
+    });
+  });
+
+  it('should map relation field name to fieldNameId when field is RELATION type', () => {
+    const result = computeRecordGroupOptionsFilter({
+      recordGroupFieldMetadata: mockRelationFieldMetadata,
+      recordGroupValues: ['company-id-1', null, 'company-id-2'],
+    });
+
+    expect(result).toEqual({
+      or: [
+        { companyId: { is: 'NULL' } },
+        { companyId: { in: ['company-id-1', 'company-id-2'] } },
       ],
     });
   });

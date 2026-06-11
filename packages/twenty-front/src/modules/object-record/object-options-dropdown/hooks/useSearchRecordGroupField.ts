@@ -1,8 +1,8 @@
 import { objectOptionsDropdownSearchInputComponentState } from '@/object-record/object-options-dropdown/states/objectOptionsDropdownSearchInputComponentState';
 import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
+import { ALL_GROUPABLE_FIELD_TYPES } from '@/object-record/record-group/constants/GroupableFieldTypes';
 import { useAtomComponentState } from '@/ui/utilities/state/jotai/hooks/useAtomComponentState';
 import { useMemo } from 'react';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 export const useSearchRecordGroupField = () => {
   const { objectMetadataItem } = useRecordIndexContextOrThrow();
@@ -18,7 +18,7 @@ export const useSearchRecordGroupField = () => {
 
     return objectMetadataItem.readableFields.filter(
       (field) =>
-        field.type === FieldMetadataType.SELECT &&
+        ALL_GROUPABLE_FIELD_TYPES.includes(field.type) &&
         field.isActive &&
         field.label.toLocaleLowerCase().includes(searchInputLowerCase),
     );

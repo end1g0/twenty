@@ -76,6 +76,129 @@ describe('useGetAvailableFieldsToGroupRecordsBy', () => {
     );
   });
 
+  it('should include BOOLEAN fields', () => {
+    const fields = [
+      {
+        id: '1',
+        type: FieldMetadataType.BOOLEAN,
+        label: 'Is Active',
+        isActive: true,
+      },
+    ];
+
+    const objectMetadataItems = [createMockObjectMetadataItem(fields)];
+    const wrapper = createWrapper(objectMetadataItems);
+
+    const { result } = renderHook(
+      () => useGetAvailableFieldsToGroupRecordsBy(),
+      { wrapper },
+    );
+
+    expect(result.current.availableFieldsForGrouping).toHaveLength(1);
+    expect(result.current.availableFieldsForGrouping[0].type).toBe(
+      FieldMetadataType.BOOLEAN,
+    );
+  });
+
+  it('should include RATING fields', () => {
+    const fields = [
+      {
+        id: '1',
+        type: FieldMetadataType.RATING,
+        label: 'Priority',
+        isActive: true,
+      },
+    ];
+
+    const objectMetadataItems = [createMockObjectMetadataItem(fields)];
+    const wrapper = createWrapper(objectMetadataItems);
+
+    const { result } = renderHook(
+      () => useGetAvailableFieldsToGroupRecordsBy(),
+      { wrapper },
+    );
+
+    expect(result.current.availableFieldsForGrouping).toHaveLength(1);
+    expect(result.current.availableFieldsForGrouping[0].type).toBe(
+      FieldMetadataType.RATING,
+    );
+  });
+
+  it('should include MULTI_SELECT fields', () => {
+    const fields = [
+      {
+        id: '1',
+        type: FieldMetadataType.MULTI_SELECT,
+        label: 'Tags',
+        isActive: true,
+      },
+    ];
+
+    const objectMetadataItems = [createMockObjectMetadataItem(fields)];
+    const wrapper = createWrapper(objectMetadataItems);
+
+    const { result } = renderHook(
+      () => useGetAvailableFieldsToGroupRecordsBy(),
+      { wrapper },
+    );
+
+    expect(result.current.availableFieldsForGrouping).toHaveLength(1);
+    expect(result.current.availableFieldsForGrouping[0].type).toBe(
+      FieldMetadataType.MULTI_SELECT,
+    );
+  });
+
+  it('should include TEXT fields (dynamic grouping)', () => {
+    const fields = [
+      {
+        id: '1',
+        type: FieldMetadataType.TEXT,
+        label: 'Category',
+        isActive: true,
+      },
+    ];
+
+    const objectMetadataItems = [createMockObjectMetadataItem(fields)];
+    const wrapper = createWrapper(objectMetadataItems);
+
+    const { result } = renderHook(
+      () => useGetAvailableFieldsToGroupRecordsBy(),
+      { wrapper },
+    );
+
+    expect(result.current.availableFieldsForGrouping).toHaveLength(1);
+    expect(result.current.availableFieldsForGrouping[0].type).toBe(
+      FieldMetadataType.TEXT,
+    );
+  });
+
+  it('should exclude non-groupable field types', () => {
+    const fields = [
+      {
+        id: '1',
+        type: FieldMetadataType.RICH_TEXT,
+        label: 'Description',
+        isActive: true,
+      },
+      {
+        id: '2',
+        type: FieldMetadataType.UUID,
+        label: 'Id',
+        isActive: true,
+      },
+    ];
+
+    const objectMetadataItems = [createMockObjectMetadataItem(fields)];
+    const wrapper = createWrapper(objectMetadataItems);
+
+    const { result } = renderHook(
+      () => useGetAvailableFieldsToGroupRecordsBy(),
+      { wrapper },
+    );
+
+    expect(result.current.availableFieldsForGrouping).toHaveLength(0);
+  });
+
   it('should return the navigateToSelectSettings function', () => {
     const fields = [
       {
@@ -100,3 +223,4 @@ describe('useGetAvailableFieldsToGroupRecordsBy', () => {
     expect(typeof result.current.navigateToSelectSettings).toBe('function');
   });
 });
+

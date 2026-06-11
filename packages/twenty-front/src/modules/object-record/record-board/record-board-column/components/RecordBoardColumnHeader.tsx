@@ -1,8 +1,15 @@
 import { styled } from '@linaria/react';
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { themeCssVariables } from 'twenty-ui-deprecated/theme-constants';
 
+import { FieldMetadataType } from 'twenty-shared/types';
+import { isFieldFullNameValue } from '@/object-record/record-field/ui/types/guards/isFieldFullNameValue';
+import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
+import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import { useObjectPermissionsForObject } from '@/object-record/hooks/useObjectPermissionsForObject';
+import { allRecordIdsOfAllRecordGroupsComponentSelector } from '@/object-record/record-index/states/selectors/allRecordIdsOfAllRecordGroupsComponentSelector';
+import { recordStoreRecordsSelector } from '@/object-record/record-store/states/selectors/recordStoreRecordsSelector';
+import { useAtomFamilySelectorValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilySelectorValue';
 import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
 import { RecordBoardColumnDropdownMenu } from '@/object-record/record-board/record-board-column/components/RecordBoardColumnDropdownMenu';
 import { RecordBoardColumnHeaderAggregateDropdown } from '@/object-record/record-board/record-board-column/components/RecordBoardColumnHeaderAggregateDropdown';
@@ -115,7 +122,57 @@ export const RecordBoardColumnHeader = () => {
 
   const dropdownId = `record-board-column-dropdown-${columnDefinition.id}`;
 
+  const allRecordIds = useAtomComponentSelectorValue(
+    allRecordIdsOfAllRecordGroupsComponentSelector,
+  );
+
+  const allRecords = useAtomFamilySelectorValue(
+    recordStoreRecordsSelector,
+    { recordIds: allRecordIds },
+  );
+
+  const displayTitle = useMemo(() => {
+    if (columnDefinition.type === RecordGroupDefinitionType.NoValue) {
+      return columnDefinition.title;
+    }
+
+    if (selectFieldMetadataItem?.type === FieldMetadataType.RELATION) {
+      const matchedRecord = allRecords.find((record) => {
+        const relationId =
+          record[`${selectFieldMetadataItem.name}Id`] ??
+          record[selectFieldMetadataItem.name]?.id;
+        return relationId === columnDefinition.value;
+      });
+
+      const relationValue = matchedRecord?.[selectFieldMetadataItem.name];
+
+      if (relationValue) {
+        if (isFieldFullNameValue(relationValue.name)) {
+          return `${relationValue.name.firstName} ${relationValue.name.lastName}`;
+        }
+        return (
+          relationValue.name ?? relationValue.label ?? columnDefinition.title
+        );
+      }
+    }
+
+    return columnDefinition.title;
+  }, [columnDefinition, selectFieldMetadataItem, allRecords]);
+
+  const [resolvedTitle, setResolvedTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (displayTitle && displayTitle !== columnDefinition.title) {
+      setResolvedTitle(displayTitle);
+    }
+  }, [displayTitle, columnDefinition.title]);
+
+  const headerTitle = resolvedTitle ?? displayTitle;
+
   const handleCreateNewRecordClick = async () => {
+    if (!selectFieldMetadataItem) {
+      return;
+    }
     await createNewIndexRecord({
       position: 'first',
       [selectFieldMetadataItem.name]: columnDefinition.value,
@@ -153,7 +210,7 @@ export const RecordBoardColumnHeader = () => {
                           ? columnDefinition.color
                           : 'transparent'
                       }
-                      text={columnDefinition.title}
+                      text={headerTitle}
                       weight={
                         columnDefinition.type ===
                         RecordGroupDefinitionType.Value

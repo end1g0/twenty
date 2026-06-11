@@ -192,7 +192,7 @@ export const ViewPickerContentCreateMode = () => {
           <>
             <ViewPickerSelectContainer>
               <Select
-                label={t`Stages`}
+                label={t`Group by`}
                 fullWidth
                 value={viewPickerMainGroupByFieldMetadataId}
                 onChange={(value) => {
@@ -205,7 +205,7 @@ export const ViewPickerContentCreateMode = () => {
                         value: field.id,
                         label: field.label,
                       }))
-                    : [{ value: '', label: t`No Select field` }]
+                    : [{ value: '', label: t`No groupable field` }]
                 }
                 dropdownId={VIEW_PICKER_KANBAN_FIELD_DROPDOWN_ID}
               />
@@ -213,7 +213,7 @@ export const ViewPickerContentCreateMode = () => {
             {availableFieldsForGrouping.length === 0 && (
               <StyledFieldAvailableContainer>
                 <Trans>
-                  Set up a Select field on {objectLabel} to create a Kanban
+                  No groupable fields available on {objectLabel}
                 </Trans>
               </StyledFieldAvailableContainer>
             )}

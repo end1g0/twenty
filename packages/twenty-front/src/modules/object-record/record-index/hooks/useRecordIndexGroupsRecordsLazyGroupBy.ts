@@ -8,8 +8,9 @@ import { generateGroupsRecordsGroupByQuery } from '@/object-record/record-aggreg
 
 import { useRecordIndexGroupCommonQueryVariables } from '@/object-record/record-index/hooks/useRecordIndexGroupCommonQueryVariables';
 import { buildGroupByFieldObject } from '@/page-layout/widgets/graph/utils/buildGroupByFieldObject';
+import { useUserTimezone } from '@/ui/input/components/internal/date/hooks/useUserTimezone';
 import { useCallback, useMemo } from 'react';
-import { type Nullable } from 'twenty-shared/types';
+import { type Nullable, ObjectRecordGroupByDateGranularity, FieldMetadataType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { type PageInfo } from '~/generated-metadata/graphql';
 
@@ -31,6 +32,7 @@ export const useRecordIndexGroupsRecordsLazyGroupBy = ({
 }) => {
   const { objectMetadataItems } = useObjectMetadataItems();
   const apolloCoreClient = useApolloCoreClient();
+  const { userTimezone } = useUserTimezone();
 
   const { combinedFilters, orderBy, recordGqlFields, recordGroupsLimit } =
     useRecordIndexGroupCommonQueryVariables();
@@ -58,9 +60,15 @@ export const useRecordIndexGroupsRecordsLazyGroupBy = ({
       isDefined(groupByFieldMetadataItem)
         ? buildGroupByFieldObject({
             field: groupByFieldMetadataItem,
+            timeZone: userTimezone,
+            dateGranularity:
+              groupByFieldMetadataItem.type === FieldMetadataType.DATE ||
+              groupByFieldMetadataItem.type === FieldMetadataType.DATE_TIME
+                ? ObjectRecordGroupByDateGranularity.MONTH
+                : undefined,
           })
         : {},
-    [groupByFieldMetadataItem],
+    [groupByFieldMetadataItem, userTimezone],
   );
 
   const defaultVariables = useMemo(

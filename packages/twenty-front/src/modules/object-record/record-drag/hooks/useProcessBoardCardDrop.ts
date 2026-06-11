@@ -12,6 +12,7 @@ import { recordIndexRecordIdsByGroupComponentFamilyState } from '@/object-record
 import { useAtomComponentFamilyStateCallbackState } from '@/ui/utilities/state/jotai/hooks/useAtomComponentFamilyStateCallbackState';
 import { useAtomComponentStateCallbackState } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateCallbackState';
 import { useDebouncedCallback } from 'use-debounce';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 export const useProcessBoardCardDrop = () => {
   const store = useStore();
@@ -46,6 +47,8 @@ export const useProcessBoardCardDrop = () => {
       options?: { shouldUpdatePosition?: boolean },
     ) => {
       if (!isDefined(selectFieldMetadataItem)) return;
+      if (selectFieldMetadataItem.type === FieldMetadataType.MULTI_SELECT)
+        return;
 
       const shouldUpdatePosition = options?.shouldUpdatePosition ?? true;
 

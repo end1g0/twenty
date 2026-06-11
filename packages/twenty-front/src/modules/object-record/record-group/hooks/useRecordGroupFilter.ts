@@ -1,9 +1,12 @@
+import { FieldMetadataType } from 'twenty-shared/types';
 import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { useCurrentRecordGroupDefinition } from '@/object-record/record-group/hooks/useCurrentRecordGroupDefinition';
 import { recordIndexGroupFieldMetadataItemComponentState } from '@/object-record/record-index/states/recordIndexGroupFieldMetadataComponentState';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { useMemo } from 'react';
 import { isDefined } from 'twenty-shared/utils';
+
+import { coerceGroupValueForFieldType } from '@/object-record/record-group/utils/coerceGroupValueForFieldType';
 
 export const useRecordGroupFilter = (fields: FieldMetadataItem[]) => {
   const currentRecordGroupDefinition = useCurrentRecordGroupDefinition();
@@ -24,13 +27,23 @@ export const useRecordGroupFilter = (fields: FieldMetadataItem[]) => {
         );
       }
 
+      const filterFieldName =
+        fieldMetadataItem.type === FieldMetadataType.RELATION
+          ? `${fieldMetadataItem.name}Id`
+          : fieldMetadataItem.name;
+
       if (!isDefined(currentRecordGroupDefinition.value)) {
-        return { [fieldMetadataItem.name]: { is: 'NULL' } };
+        return { [filterFieldName]: { is: 'NULL' } };
       }
 
+      const coercedValue = coerceGroupValueForFieldType(
+        fieldMetadataItem.type,
+        currentRecordGroupDefinition.value,
+      );
+
       return {
-        [fieldMetadataItem.name]: {
-          eq: currentRecordGroupDefinition.value,
+        [filterFieldName]: {
+          eq: coercedValue,
         },
       };
     }

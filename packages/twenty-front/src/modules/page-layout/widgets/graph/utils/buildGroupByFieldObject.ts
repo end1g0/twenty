@@ -9,6 +9,7 @@ import {
 import {
   FirstDayOfTheWeek,
   ObjectRecordGroupByDateGranularity,
+  FieldMetadataType,
 } from 'twenty-shared/types';
 import {
   convertCalendarStartDayNonIsoNumberToFirstDayOfTheWeek,
@@ -106,15 +107,37 @@ export const buildGroupByFieldObject = ({
   }
 
   if (isComposite) {
-    if (!isDefined(subFieldName)) {
-      throw new Error(
-        `Composite field ${field.name} requires a subfield to be specified`,
-      );
+    let activeSubFieldName = subFieldName;
+    if (!isDefined(activeSubFieldName)) {
+      switch (field.type) {
+        case FieldMetadataType.CURRENCY:
+          activeSubFieldName = 'amountMicros';
+          break;
+        case FieldMetadataType.EMAILS:
+          activeSubFieldName = 'primaryEmail';
+          break;
+        case FieldMetadataType.PHONES:
+          activeSubFieldName = 'primaryPhoneNumber';
+          break;
+        case FieldMetadataType.LINKS:
+          activeSubFieldName = 'primaryLinkUrl';
+          break;
+        case FieldMetadataType.ADDRESS:
+          activeSubFieldName = 'addressStreet1';
+          break;
+        case FieldMetadataType.FULL_NAME:
+          activeSubFieldName = 'firstName';
+          break;
+        default:
+          throw new Error(
+            `Composite field ${field.name} of type ${field.type} requires a subfield to be specified`,
+          );
+      }
     }
 
     return {
       [field.name]: {
-        [subFieldName]: true,
+        [activeSubFieldName]: true,
       },
     };
   }

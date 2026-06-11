@@ -23,17 +23,31 @@ import { isNonEmptyArray } from '@sniptt/guards';
 import { useStore } from 'jotai';
 import { useCallback } from 'react';
 import { isDefined } from 'twenty-shared/utils';
+import { FieldMetadataType } from 'twenty-shared/types';
+import { v4 } from 'uuid';
+import {
+  type RecordGroupDefinition,
+  RecordGroupDefinitionType,
+} from '@/object-record/record-group/types/RecordGroupDefinition';
+import { useSetRecordGroups } from '@/object-record/record-group/hooks/useSetRecordGroups';
+
 
 export const useTriggerRecordBoardInitialQuery = () => {
   const recordGroupDefinitions = useAtomComponentSelectorValue(
     recordGroupDefinitionsComponentSelector,
   );
 
-  const { objectMetadataItem } = useRecordIndexContextOrThrow();
+  const { objectMetadataItem, recordIndexId } = useRecordIndexContextOrThrow();
+
+  const { setRecordGroups } = useSetRecordGroups();
 
   const recordIndexGroupFieldMetadataItem = useAtomComponentStateValue(
     recordIndexGroupFieldMetadataItemComponentState,
   );
+
+  const isDateField = recordIndexGroupFieldMetadataItem &&
+    (recordIndexGroupFieldMetadataItem.type === FieldMetadataType.DATE ||
+      recordIndexGroupFieldMetadataItem.type === FieldMetadataType.DATE_TIME);
 
   const setLastRecordBoardQueryIdentifier = useSetAtomComponentState(
     lastRecordBoardQueryIdentifierComponentState,
@@ -109,12 +123,113 @@ export const useTriggerRecordBoardInitialQuery = () => {
       return;
     }
 
-    for (const recordGroupDefinition of recordGroupDefinitions) {
-      const foundGroupInResult = groups?.find(
-        (recordGroup: any) =>
-          (recordGroup.groupByDimensionValues[0] as string) ===
-          recordGroupDefinition.value,
-      );
+    const currentGroupValues = new Set(
+      recordGroupDefinitions.map((def) => def.value),
+    );
+
+    const MONTH_NAMES = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    const newGroupsToCreate: RecordGroupDefinition[] = [];
+    if (isDefined(groups)) {
+      for (const group of groups) {
+        let value = group.groupByDimensionValues[0] ?? null;
+        if (isDefined(value)) {
+          value = String(value);
+        }
+        if (isDateField && typeof value === 'string' && value.length >= 10) {
+          value = value.substring(0, 10);
+        }
+        if (!currentGroupValues.has(value) && value !== null && value !== '') {
+          let title = value;
+          if (
+            recordIndexGroupFieldMetadataItem &&
+            (recordIndexGroupFieldMetadataItem.type === FieldMetadataType.DATE ||
+              recordIndexGroupFieldMetadataItem.type === FieldMetadataType.DATE_TIME)
+          ) {
+            const parts = value.split('-');
+            if (parts.length >= 2) {
+              const year = parts[0];
+              const monthIndex = parseInt(parts[1], 10) - 1;
+              if (monthIndex >= 0 && monthIndex < 12) {
+                title = `${MONTH_NAMES[monthIndex]} ${year}`;
+              }
+            }
+          }
+          if (
+            recordIndexGroupFieldMetadataItem &&
+            recordIndexGroupFieldMetadataItem.type === FieldMetadataType.CURRENCY
+          ) {
+            const amount = parseFloat(value) / 1000000;
+            if (!isNaN(amount)) {
+              title = `$${amount.toLocaleString()}`;
+            }
+          }
+          newGroupsToCreate.push({
+            id: v4(),
+            type: RecordGroupDefinitionType.Value,
+            title: title,
+            value: value,
+            color: 'transparent',
+            position: recordGroupDefinitions.length + newGroupsToCreate.length,
+            isVisible: true,
+          });
+        }
+      }
+    }
+
+    const activeDefinitions = newGroupsToCreate.length > 0
+      ? [...recordGroupDefinitions, ...newGroupsToCreate]
+      : recordGroupDefinitions;
+
+    const filteredDefinitions = isDateField
+      ? activeDefinitions.filter((def) => {
+          return groups.some((group: any) => {
+            let value = group.groupByDimensionValues[0] ?? null;
+            if (isDateField && typeof value === 'string' && value.length >= 10) {
+              value = value.substring(0, 10);
+            }
+            return value === def.value;
+          });
+        })
+      : activeDefinitions;
+
+    const shouldUpdateRecordGroups = newGroupsToCreate.length > 0 || isDateField;
+
+    if (shouldUpdateRecordGroups) {
+      setRecordGroups({
+        mainGroupByFieldMetadataId: recordIndexGroupFieldMetadataItem?.id ?? '',
+        recordGroups: filteredDefinitions,
+        recordIndexId,
+        objectMetadataItemId: objectMetadataItem.id,
+      });
+    }
+
+    const definitionsToProcess = shouldUpdateRecordGroups ? filteredDefinitions : recordGroupDefinitions;
+
+    for (const recordGroupDefinition of definitionsToProcess) {
+      const foundGroupInResult = groups?.find((recordGroup: any) => {
+        let value = recordGroup.groupByDimensionValues[0];
+        if (isDefined(value)) {
+          value = String(value);
+        }
+        if (isDateField && typeof value === 'string' && value.length >= 10) {
+          value = value.substring(0, 10);
+        }
+        return value === recordGroupDefinition.value;
+      });
 
       if (!isDefined(foundGroupInResult)) {
         setRecordIdsForColumn(recordGroupDefinition.id, []);
@@ -177,6 +292,9 @@ export const useTriggerRecordBoardInitialQuery = () => {
     upsertRecordsInStore,
     setRecordIdsForColumn,
     recordBoardShouldFetchMoreInColumnFamilyCallbackState,
+    setRecordGroups,
+    recordIndexId,
+    recordIndexGroupFieldMetadataItem,
   ]);
 
   return {

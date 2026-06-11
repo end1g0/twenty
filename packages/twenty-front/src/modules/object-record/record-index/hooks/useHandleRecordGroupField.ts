@@ -2,6 +2,7 @@ import { useContextStoreObjectMetadataItemOrThrow } from '@/context-store/hooks/
 import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
 import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { useSetRecordGroups } from '@/object-record/record-group/hooks/useSetRecordGroups';
+import { getGroupOptionsForField } from '@/object-record/record-group/utils/getGroupOptionsForField';
 import { useLoadRecordIndexStates } from '@/object-record/record-index/hooks/useLoadRecordIndexStates';
 import { useAtomComponentStateCallbackState } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateCallbackState';
 import { usePerformViewAPIUpdate } from '@/views/hooks/internal/usePerformViewAPIUpdate';
@@ -44,12 +45,7 @@ export const useHandleRecordGroupField = () => {
         return;
       }
 
-      if (
-        isUndefinedOrNull(fieldMetadataItem.options) ||
-        fieldMetadataItem.options.length === 0
-      ) {
-        return;
-      }
+      const groupOptions = getGroupOptionsForField(fieldMetadataItem);
 
       const updatedViewResult = await performViewAPIUpdate({
         id: view.id,
@@ -73,7 +69,7 @@ export const useHandleRecordGroupField = () => {
         ),
       );
 
-      const viewGroupsToCreate = fieldMetadataItem.options
+      const viewGroupsToCreate = groupOptions
         .filter(
           (option) =>
             !existingGroupKeys.has(`${fieldMetadataItem.id}:${option.value}`),
@@ -97,7 +93,7 @@ export const useHandleRecordGroupField = () => {
           id: v4(),
           fieldValue: '',
           isVisible: true,
-          position: fieldMetadataItem.options.length,
+          position: groupOptions.length,
         } satisfies ViewGroup);
       }
 

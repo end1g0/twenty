@@ -76,9 +76,6 @@ export const ObjectOptionsDropdownRecordGroupFieldsContent = () => {
     {
       objectNamePlural,
     },
-    {
-      fieldType: FieldMetadataType.SELECT,
-    },
   );
 
   const location = useLocation();
@@ -159,7 +156,7 @@ export const ObjectOptionsDropdownRecordGroupFieldsContent = () => {
             closeDropdown();
           }}
         >
-          <MenuItem LeftIcon={IconSettings} text={t`Create select field`} />
+          <MenuItem LeftIcon={IconSettings} text={t`Create field`} />
         </UndecoratedLink>
       </DropdownMenuItemsContainer>
     </DropdownContent>

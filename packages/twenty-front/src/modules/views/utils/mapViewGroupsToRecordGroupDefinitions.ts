@@ -3,9 +3,11 @@ import {
   type RecordGroupDefinition,
   RecordGroupDefinitionType,
 } from '@/object-record/record-group/types/RecordGroupDefinition';
+import { ALL_GROUPABLE_FIELD_TYPES } from '@/object-record/record-group/constants/GroupableFieldTypes';
+import { getGroupOptionsForField } from '@/object-record/record-group/utils/getGroupOptionsForField';
 import { type ViewGroup } from '@/views/types/ViewGroup';
 import { isDefined } from 'twenty-shared/utils';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { FieldMetadataType } from 'twenty-shared/types';
 
 export const mapViewGroupsToRecordGroupDefinitions = ({
   mainGroupByFieldMetadataId,
@@ -20,29 +22,43 @@ export const mapViewGroupsToRecordGroupDefinitions = ({
     return [];
   }
 
-  const selectFieldMetadataItem = objectMetadataItem.fields.find(
+  const groupFieldMetadataItem = objectMetadataItem.fields.find(
     (field) =>
       field.id === mainGroupByFieldMetadataId &&
-      field.type === FieldMetadataType.SELECT,
+      ALL_GROUPABLE_FIELD_TYPES.includes(field.type),
   );
 
-  if (!selectFieldMetadataItem) {
+  if (!groupFieldMetadataItem) {
     return [];
   }
 
-  if (!selectFieldMetadataItem.options) {
-    throw new Error(
-      `Select Field ${objectMetadataItem.nameSingular} has no options`,
-    );
-  }
+  const groupOptions = getGroupOptionsForField(groupFieldMetadataItem);
+
+  const isStaticField = [
+    FieldMetadataType.SELECT,
+    FieldMetadataType.MULTI_SELECT,
+    FieldMetadataType.BOOLEAN,
+    FieldMetadataType.RATING,
+  ].includes(groupFieldMetadataItem.type as FieldMetadataType);
 
   const recordGroupDefinitionsFromViewGroups = viewGroups
     .map((viewGroup) => {
-      const selectedOption = selectFieldMetadataItem.options?.find(
-        (option) => option.value === viewGroup.fieldValue,
+      let fieldValue = viewGroup.fieldValue;
+      if (
+        (groupFieldMetadataItem.type === FieldMetadataType.DATE ||
+          groupFieldMetadataItem.type === FieldMetadataType.DATE_TIME) &&
+        typeof fieldValue === 'string' &&
+        fieldValue.length === 7
+      ) {
+        fieldValue = `${fieldValue}-01`;
+      }
+
+      const selectedOption = groupOptions.find(
+        (option) => option.value === fieldValue,
       );
 
       if (
+        isStaticField &&
         !selectedOption &&
         isDefined(viewGroup.fieldValue) &&
         viewGroup.fieldValue !== ''
@@ -50,17 +66,23 @@ export const mapViewGroupsToRecordGroupDefinitions = ({
         return null;
       }
 
-      if (!selectedOption && selectFieldMetadataItem.isNullable === false) {
+      if (
+        isStaticField &&
+        !selectedOption &&
+        groupFieldMetadataItem.isNullable === false
+      ) {
         return null;
       }
 
       return {
         id: viewGroup.id,
-        type: !isDefined(selectedOption)
-          ? RecordGroupDefinitionType.NoValue
-          : RecordGroupDefinitionType.Value,
-        title: selectedOption?.label ?? 'No Value',
-        value: selectedOption?.value ?? null,
+        type:
+          !isDefined(selectedOption) &&
+          (viewGroup.fieldValue === '' || !isDefined(viewGroup.fieldValue))
+            ? RecordGroupDefinitionType.NoValue
+            : RecordGroupDefinitionType.Value,
+        title: selectedOption?.label ?? (viewGroup.fieldValue || 'No Value'),
+        value: selectedOption?.value ?? (viewGroup.fieldValue === '' ? null : (viewGroup.fieldValue ?? null)),
         color: selectedOption?.color ?? 'transparent',
         position: viewGroup.position,
         isVisible: viewGroup.isVisible,
@@ -72,3 +94,4 @@ export const mapViewGroupsToRecordGroupDefinitions = ({
     (a, b) => a.position - b.position,
   );
 };
+

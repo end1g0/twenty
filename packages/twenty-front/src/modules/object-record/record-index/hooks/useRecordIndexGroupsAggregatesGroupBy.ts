@@ -12,11 +12,12 @@ import { currentRecordFiltersComponentState } from '@/object-record/record-filte
 import { useAggregateGqlFieldsFromRecordIndexGroupAggregates } from '@/object-record/record-index/hooks/useAggregateGqlFieldsFromRecordIndexGroupAggregates';
 import { type ExtendedAggregateOperations } from '@/object-record/record-table/types/ExtendedAggregateOperations';
 import { buildGroupByFieldObject } from '@/page-layout/widgets/graph/utils/buildGroupByFieldObject';
+import { useUserTimezone } from '@/ui/input/components/internal/date/hooks/useUserTimezone';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { useQuery } from '@apollo/client/react';
 import { useMemo } from 'react';
-import { type Nullable } from 'twenty-shared/types';
+import { type Nullable, ObjectRecordGroupByDateGranularity, FieldMetadataType } from 'twenty-shared/types';
 import {
   computeRecordGqlOperationFilter,
   isDefined,
@@ -94,8 +95,16 @@ export const useRecordIndexGroupsAggregatesGroupBy = ({
 
   const hasReadPermission = objectPermissions.canReadObjectRecords;
 
+  const { userTimezone } = useUserTimezone();
+
   const groupByGqlInput = buildGroupByFieldObject({
     field: groupByFieldMetadataItem,
+    timeZone: userTimezone,
+    dateGranularity:
+      groupByFieldMetadataItem.type === FieldMetadataType.DATE ||
+      groupByFieldMetadataItem.type === FieldMetadataType.DATE_TIME
+        ? ObjectRecordGroupByDateGranularity.MONTH
+        : undefined,
   });
 
   const { data, loading, error } = useQuery(groupByAggregateQuery, {

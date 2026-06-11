@@ -208,9 +208,25 @@ export class ViewToolsFactory {
       );
     }
 
-    if (fieldMetadata.type !== FieldMetadataType.SELECT) {
+    const groupableFieldTypes: FieldMetadataType[] = [
+      FieldMetadataType.SELECT,
+      FieldMetadataType.MULTI_SELECT,
+      FieldMetadataType.BOOLEAN,
+      FieldMetadataType.RATING,
+      FieldMetadataType.TEXT,
+      FieldMetadataType.NUMBER,
+      FieldMetadataType.RELATION,
+      FieldMetadataType.DATE,
+      FieldMetadataType.DATE_TIME,
+      FieldMetadataType.CURRENCY,
+      FieldMetadataType.EMAILS,
+      FieldMetadataType.PHONES,
+      FieldMetadataType.LINKS,
+    ];
+
+    if (!groupableFieldTypes.includes(fieldMetadata.type)) {
       throw new Error(
-        `Field "${fieldName}" has type "${fieldMetadata.type}" and cannot be used as a group-by field. Only SELECT fields are supported for grouping (board columns and table groups).`,
+        `Field "${fieldName}" has type "${fieldMetadata.type}" and cannot be used as a group-by field. Supported field types for grouping are: select, multi-select, boolean, rating, date, text, relation, number, currency, emails, phones, and links.`,
       );
     }
 

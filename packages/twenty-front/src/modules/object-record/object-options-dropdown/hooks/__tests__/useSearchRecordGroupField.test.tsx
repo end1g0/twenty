@@ -60,7 +60,7 @@ describe('useSearchRecordGroupField', () => {
     ]);
   });
 
-  it('returns all select fields when search input is empty', () => {
+  it('returns all groupable fields when search input is empty', () => {
     const fields = [
       { type: FieldMetadataType.SELECT, label: 'First', isActive: true },
       { type: FieldMetadataType.SELECT, label: 'Second', isActive: true },
@@ -79,10 +79,11 @@ describe('useSearchRecordGroupField', () => {
     expect(result.current.filteredRecordGroupFieldMetadataItems).toEqual([
       { type: FieldMetadataType.SELECT, label: 'First', isActive: true },
       { type: FieldMetadataType.SELECT, label: 'Second', isActive: true },
+      { type: FieldMetadataType.TEXT, label: 'Third', isActive: true },
     ]);
   });
 
-  it('filters out inactive SELECT fields', () => {
+  it('filters out inactive fields', () => {
     const fields = [
       { type: FieldMetadataType.SELECT, label: 'Active Field', isActive: true },
       {
@@ -103,10 +104,13 @@ describe('useSearchRecordGroupField', () => {
     const { result } = renderWithContext(mockContextValue);
 
     expect(result.current.filteredRecordGroupFieldMetadataItems).toHaveLength(
-      1,
+      2,
     );
     expect(result.current.filteredRecordGroupFieldMetadataItems[0].label).toBe(
       'Active Field',
+    );
+    expect(result.current.filteredRecordGroupFieldMetadataItems[1].label).toBe(
+      'Text Field',
     );
   });
 
@@ -185,10 +189,10 @@ describe('useSearchRecordGroupField', () => {
     ]);
   });
 
-  it('returns empty array when no SELECT fields exist', () => {
+  it('returns empty array when no groupable fields exist', () => {
     const fields = [
-      { type: FieldMetadataType.TEXT, label: 'Name', isActive: true },
-      { type: FieldMetadataType.NUMBER, label: 'Count', isActive: true },
+      { type: FieldMetadataType.UUID, label: 'Id', isActive: true },
+      { type: FieldMetadataType.RICH_TEXT, label: 'Description', isActive: true },
     ];
     const mockContextValue = {
       objectMetadataItem: {

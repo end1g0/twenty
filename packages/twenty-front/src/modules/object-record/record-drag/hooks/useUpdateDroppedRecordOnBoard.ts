@@ -2,6 +2,7 @@ import { useStore } from 'jotai';
 
 import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
 import { extractRecordPositions } from '@/object-record/record-drag/utils/extractRecordPositions';
+import { coerceGroupValueForFieldType } from '@/object-record/record-group/utils/coerceGroupValueForFieldType';
 import { recordGroupDefinitionsComponentSelector } from '@/object-record/record-group/states/selectors/recordGroupDefinitionsComponentSelector';
 import { type RecordGroupDefinition } from '@/object-record/record-group/types/RecordGroupDefinition';
 import { recordIndexRecordIdsByGroupComponentFamilyState } from '@/object-record/record-index/states/recordIndexRecordIdsByGroupComponentFamilyState';
@@ -13,6 +14,7 @@ import { useAtomComponentSelectorValue } from '@/ui/utilities/state/jotai/hooks/
 import { useCallback, useContext } from 'react';
 import { findByProperty, isDefined } from 'twenty-shared/utils';
 import { sortByProperty } from '~/utils/array/sortByProperty';
+import { FieldMetadataType } from 'twenty-shared/types';
 
 export const useUpdateDroppedRecordOnBoard = () => {
   const store = useStore();
@@ -152,26 +154,63 @@ export const useUpdateDroppedRecordOnBoard = () => {
         );
       }
 
+      let coercedValue = coerceGroupValueForFieldType(
+        selectFieldMetadataItem.type,
+        targetRecordGroupValue,
+      );
+
+      if (
+        selectFieldMetadataItem.type === FieldMetadataType.CURRENCY &&
+        coercedValue !== null &&
+        typeof coercedValue === 'object'
+      ) {
+        const initialCurrency = initialRecord[selectFieldMetadataItem.name] as any;
+        coercedValue = {
+          ...coercedValue,
+          currencyCode: initialCurrency?.currencyCode ?? 'USD',
+        };
+      }
+
+      const isRelation =
+        selectFieldMetadataItem.type === FieldMetadataType.RELATION;
+      const relationFieldName = selectFieldMetadataItem.name;
+      const relationIdFieldName = `${relationFieldName}Id`;
+
+      const storeRecordUpdate: Record<string, any> = {
+        ...initialRecord,
+        id: recordId,
+        __typename:
+          (initialRecord as { __typename?: string })?.__typename ??
+          'Record',
+        position: newPosition,
+      };
+
+      if (isRelation) {
+        storeRecordUpdate[relationIdFieldName] = coercedValue;
+        storeRecordUpdate[relationFieldName] = coercedValue
+          ? { id: coercedValue }
+          : null;
+      } else {
+        storeRecordUpdate[relationFieldName] = coercedValue;
+      }
+
       upsertRecordsInStore({
-        partialRecords: [
-          {
-            ...initialRecord,
-            id: recordId,
-            __typename:
-              (initialRecord as { __typename?: string })?.__typename ??
-              'Record',
-            [selectFieldMetadataItem.name]: targetRecordGroupValue,
-            ...(isDefined(newPosition) && { position: newPosition }),
-          } as ObjectRecord,
-        ],
+        partialRecords: [storeRecordUpdate as ObjectRecord],
       });
+
+      const updateInput: Record<string, any> = {
+        position: newPosition,
+      };
+
+      if (isRelation) {
+        updateInput[relationIdFieldName] = coercedValue;
+      } else {
+        updateInput[relationFieldName] = coercedValue;
+      }
 
       updateOneRecord({
         idToUpdate: recordId,
-        updateOneRecordInput: {
-          [selectFieldMetadataItem.name]: targetRecordGroupValue,
-          ...(isDefined(newPosition) && { position: newPosition }),
-        },
+        updateOneRecordInput: updateInput,
       });
     },
     [
